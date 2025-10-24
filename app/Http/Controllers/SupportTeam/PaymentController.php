@@ -79,7 +79,7 @@ class PaymentController extends Controller
 
     // Fine And Invoice
 
-  public function invoice($st_id, $year = null)
+    public function invoice($st_id, $year = null)
     {
         if (!$st_id) {
             return Qs::goWithDanger();
@@ -173,7 +173,7 @@ class PaymentController extends Controller
         return PDF::loadHTML($html)->download($name);
     }
 
-   public function pay_now(Request $req, $id)
+    public function pay_now(Request $req, $id)
     {
         try {
             // Decode ID if hashed
@@ -184,12 +184,12 @@ class PaymentController extends Controller
             if ($req->additional_amount) {
                 PaymentRecord::where('student_id', $req->student_id)
                     ->increment('additional_amount_paid', $req->additional_amount);
-                    
+
                 return response()->json([
                     'ok'  => true,
                     'msg' => 'Record Updated Successfully',
                 ], 200);
-            } 
+            }
 
             // Get payment record
             $pr = $this->pay->findRecord($id);
@@ -369,7 +369,7 @@ class PaymentController extends Controller
         return Qs::goToRoute(['payments.manage', $class_id]);
     }
 
-  public function store(PaymentCreate $req)
+    public function store(PaymentCreate $req)
     {
         $data = $req->all();
         $data['year']   = $this->year;
@@ -471,11 +471,11 @@ class PaymentController extends Controller
 
         $amount = 0;
         if ($request->has('class_id') && $request->class_id) {
-            // Get the amount for the specific class
+
             $amount = ModelsPayment::where('my_class_id', $request->class_id)
-                ->sum('amount'); // sum in case multiple records exist
+                ->sum('amount');
         } else {
-            // Get the total sum of all amounts
+
             $amount = ModelsPayment::sum('amount');
         }
 
@@ -487,23 +487,23 @@ class PaymentController extends Controller
             ->select('users.*', 'student_records.my_class_id')
             ->get();
 
-       $studentsWithPayments = $students->map(function ($student) {
+        $studentsWithPayments = $students->map(function ($student) {
 
-    $amountPaidThisMonth = DB::table('payment_records')
-        ->where('student_id', $student->id)
-        ->whereYear('created_at', now()->year)
-        ->whereMonth('created_at', now()->month)
-        ->sum('amt_paid');
+            $amountPaidThisMonth = DB::table('payment_records')
+                ->where('student_id', $student->id)
+                ->whereYear('created_at', now()->year)
+                ->whereMonth('created_at', now()->month)
+                ->sum('amt_paid');
 
-    $monthlyFee = 10000;
-    $paid = $amountPaidThisMonth; // <-- no limit now
-    $pending = max($monthlyFee - $paid, 0);
+            $monthlyFee = 10000;
+            $paid = $amountPaidThisMonth;
+            $pending = max($monthlyFee - $paid, 0);
 
-    $student->fee_demand      = $monthlyFee;
-    $student->paid_this_month = $paid;
-    $student->pending         = $pending;
-    return $student;
-});
+            $student->fee_demand      = $monthlyFee;
+            $student->paid_this_month = $paid;
+            $student->pending         = $pending;
+            return $student;
+        });
 
 
 
@@ -579,5 +579,30 @@ class PaymentController extends Controller
         ]);
 
         return back()->with('success', 'Additional payment of ' . number_format($enteredAmount, 2) . ' LKR completed successfully!');
+    }
+
+    public function updateRecord(Request $request)
+    {
+        $request->validate([
+            'id' => 'required|integer',
+            'amt_paid' => 'required|numeric|min:0',
+        ]);
+
+        $record = \App\Models\PaymentRecord::find($request->id);
+
+        if (! $record) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'Record not found.'
+            ], 404);
+        }
+
+        $record->amt_paid = $request->amt_paid;
+        $record->save();
+
+        return response()->json([
+            'ok' => true,
+            'message' => 'Paid amount updated successfully.'
+        ]);
     }
 }

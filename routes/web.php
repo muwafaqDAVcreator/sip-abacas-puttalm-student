@@ -98,6 +98,7 @@ Route::group(['middleware' => 'auth'], function () {
             Route::get('fetch-students', [PaymentController::class, 'fetchStudents'])->name('fetch_students');
 
             Route::get('summary', 'PaymentController@summary')->name('summary');
+          Route::post('update-record', [PaymentController::class, 'updateRecord'])->name('update_record');
         });
 
         /*************** Pins *****************/

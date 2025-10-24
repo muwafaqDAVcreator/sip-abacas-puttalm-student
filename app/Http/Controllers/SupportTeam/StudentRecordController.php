@@ -74,13 +74,13 @@ class StudentRecordController extends Controller
             $data['photo'] = asset('storage/' . $f['path']);
         }
 
-        $user = $this->user->create($data); // Create User
+        $user = $this->user->create($data);
 
         $sr['adm_no'] = $data['username'];
         $sr['user_id'] = $user->id;
         $sr['session'] = Qs::getSetting('current_session');
 
-        $this->student->createRecord($sr); // Create Student
+        $this->student->createRecord($sr);
         return Qs::jsonStoreOk();
     }
 
@@ -120,7 +120,6 @@ class StudentRecordController extends Controller
 
         $data['sr'] = $this->student->getRecord(['id' => $sr_id])->first();
 
-        /* Prevent Other Students/Parents from viewing Profile of others */
         if (Auth::user()->id != $data['sr']->user_id && !Qs::userIsTeamSAT() && !Qs::userIsMyChild($data['sr']->user_id, Auth::user()->id)) {
             return redirect(route('dashboard'))->with('pop_error', __('msg.denied'));
         }
@@ -151,8 +150,11 @@ class StudentRecordController extends Controller
             return Qs::goWithDanger();
         }
 
+        // Get current student record
         $sr = $this->student->getRecord(['id' => $sr_id])->first();
-        $d =  $req->only(Qs::getUserRecord());
+
+        // Update User fields
+        $d = $req->only(Qs::getUserRecord());
         $d['name'] = ucwords($req->name);
 
         if ($req->hasFile('photo')) {
@@ -163,15 +165,19 @@ class StudentRecordController extends Controller
             $d['photo'] = asset('storage/' . $f['path']);
         }
 
-        $this->user->update($sr->user->id, $d); // Update User Details
+        $this->user->update($sr->user->id, $d);
 
         $srec = $req->only(Qs::getStudentData());
+        if ($req->has('adm_no')) {
+            $srec['adm_no'] = strtoupper($req->adm_no);
+        }
 
-        $this->student->updateRecord($sr_id, $srec); // Update St Rec
+        $this->student->updateRecord($sr_id, $srec);
         Mk::deleteOldRecord($sr->user->id, $srec['my_class_id']);
 
         return Qs::jsonUpdateOk();
     }
+
 
     public function destroy($st_id)
     {
@@ -196,13 +202,10 @@ class StudentRecordController extends Controller
     }
 
 
-    /** Student Info (All Students + Classes) */
-
     public function studentinfo()
     {
         $students = $this->student->all();
 
-        // Modify ADM_No to show only the number (remove the prefix)
         foreach ($students as $student) {
             $student->adm_no = Str::after($student->adm_no, '//');
         }
